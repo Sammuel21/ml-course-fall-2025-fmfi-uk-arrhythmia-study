@@ -1,0 +1,47 @@
+ML Project 2025
+Winter Semester
+
+Data Exploration:
+
+Medical:
+- https://archive.ics.uci.edu/dataset/296/diabetes+130-us+hospitals+for+years+1999-2008
+
+- Physiologic Signals:
+	- https://physionet.org/about/
+	- advanced medical datasets - real data
+	- mostly locked access but some open
+
+	1. AF Termination Challenge Database:
+		- https://physionet.org/content/aftdb/1.0.0/
+
+	2. A large scale 12-lead ECG for arrythmia study:
+		- https://physionet.org/content/ecg-arrhythmia/1.0.0/
+
+	3. Multimodal Dataset for Investigating Working Memory in Presence of Music:
+		- https://physionet.org/content/multimodal-nback-music/1.0.0/
+
+	4. Autonomic Aging: quantify changes of cardiovascular autonomic function during healthy aging:
+		- https://physionet.org/content/autonomic-aging-cardiovascular/1.0.0/
+
+	5. ECG Fragments for the Exploration of Dangerous arrhythmias:
+		- https://physionet.org/content/ecg-fragment-high-risk-label/1.0.0/
+
+	
+	Interests:
+	
+	- 1. Arrythmia data study:
+		- https://physionet.org/content/ecg-arrhythmia/1.0.0/
+		- https://physionet.org/content/ecg-fragment-high-risk-label/1.0.0/
+
+		- Possible questions/topics to study:
+			- classification of dangerous/benign arrythmias
+			- model performance, input corruption/adversarial input testing
+			- patient data clustering -> interesting patterns in Data
+		
+		- Projekt:
+			- Arrythmia study
+			- klasifikacia kondicie -> e.g. AFib
+			- testovanie efektov transformacie dat na performance
+			- clustering dat a vizualizacia
+			- testovanie robustnosti modelov -> korupcia random casti signalu -> ako to ovplyvni performance po inputacii
+			-> analyza kritickych casti signalu -> ktore segmenty signalov su najdolezitejsie?
