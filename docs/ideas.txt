@@ -1,0 +1,4 @@
+Output Ideas:
+    - General report card:
+        - ECG summary statistics for doc
+        - ML pipeline condition diagnosis
