@@ -1,6 +1,7 @@
 # Data loading and preprocessing scripts
 
-import os 
+import os
+import json
 import numpy as np
 import pandas as pd
 import wfdb
@@ -93,6 +94,16 @@ def parse_header(header_path):
         "sex": sex,
         "dx_codes": dx_codes,
     }
+
+
+def build_meta_df(root_dir, dirname='WFDBRecords'):
+    rows = []
+    for hea in iter_header_paths(root_dir, dirname=dirname):
+        rows.append(parse_header(hea))
+    meta_df = pd.DataFrame(rows)
+    meta_df["record_id"] = meta_df["record_path"].astype(str)
+    meta_df['dx_codes'] = meta_df['dx_codes'].map(json.loads)
+    return meta_df
 
 
 # label loading - y target attribute
