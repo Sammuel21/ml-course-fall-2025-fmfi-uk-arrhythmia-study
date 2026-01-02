@@ -2,6 +2,7 @@
 
 import numpy as np
 import torch
+from configs.constants import RHYTHM_INFO_BY_SNOMED
 
 from sklearn.metrics import (
     f1_score,
@@ -118,3 +119,25 @@ def rhythm_conditions_eval(Y_true, logits, rhythm_idx, cond_idx, threshold=0.5,
         "conditions_multilabel": cond_metrics,
         "rhythm": rhythm,
     }
+
+
+def score_overall_and_rc(y_true_bin, logits, mlb, split_name="val", threshold=0.5):
+    # build rhythm/condition indices once per call (mlb is already fit)
+    rhythm_snomed = list(RHYTHM_INFO_BY_SNOMED.keys())
+    label_to_idx = {c: i for i, c in enumerate(mlb.classes_)}
+    rhythm_idx = [label_to_idx[c] for c in rhythm_snomed if c in label_to_idx]
+    cond_idx = [i for i in range(len(mlb.classes_)) if i not in rhythm_idx]
+
+    overall, _, _ = multilabel_eval(y_true_bin, logits, threshold=threshold)
+    rc = rhythm_conditions_eval(
+        y_true_bin, logits,
+        rhythm_idx=rhythm_idx, cond_idx=cond_idx,
+        threshold=threshold,
+        rhythm_label_names=[mlb.classes_[i] for i in rhythm_idx],
+        cond_label_names=[mlb.classes_[i] for i in cond_idx],
+    )
+
+    print(f"[{split_name}] overall:", overall)
+    print(f"[{split_name}] conditions:", rc["conditions_multilabel"])
+    print(f"[{split_name}] rhythm:", rc["rhythm"])
+    return overall, rc
