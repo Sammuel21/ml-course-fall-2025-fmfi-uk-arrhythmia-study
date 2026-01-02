@@ -1,5 +1,6 @@
 
-# Baseline ECG
+import torch.nn as nn
+
 
 class SmallECGCNN(nn.Module):
     def __init__(self, n_labels: int):
@@ -19,5 +20,4 @@ class SmallECGCNN(nn.Module):
     def forward(self, x):
         z = self.backbone(x)
         return self.head(z)
-    
 
