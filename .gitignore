@@ -1,0 +1,22 @@
+# General
+data
+docs/resources
+# env
+.env
+.env.*
+
+# Python bytecode / import caches
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Test / type / linter caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Packaging / build artifacts
+*.egg-info/
+dist/
+build/
