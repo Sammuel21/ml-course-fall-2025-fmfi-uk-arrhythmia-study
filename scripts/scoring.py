@@ -35,21 +35,33 @@ def _filter_labels_with_both_classes(y_true: np.ndarray):
     keep = (pos > 0) & (pos < y_true.shape[0])
     return keep
 
-def multilabel_eval(Y_true, logits, threshold=0.5, label_names=None, return_reports=False):
+
+
+def multilabel_eval(
+    Y_true,
+    scores,
+    threshold=0.5,
+    label_names=None,
+    return_reports=False,
+    inputs_are_probs=False,
+):
     Y_true = _to_numpy(Y_true).astype(int)
-    logits = _to_numpy(logits).astype(np.float32)
-    P = sigmoid_np(logits)
+    scores = _to_numpy(scores).astype(np.float32)
+
+    # NOTE: probs vs logits
+    if inputs_are_probs:
+        P = np.clip(scores, 0.0, 1.0).astype(np.float32)
+    else:
+        P = sigmoid_np(scores)
+
     Y_pred = (P >= threshold).astype(int)
 
     out = {}
-
-    # Thresholded metrics
     out["f1_micro"] = f1_score(Y_true, Y_pred, average="micro", zero_division=0)
     out["f1_macro"] = f1_score(Y_true, Y_pred, average="macro", zero_division=0)
     out["f1_samples"] = f1_score(Y_true, Y_pred, average="samples", zero_division=0)
     out["hamming_loss"] = hamming_loss(Y_true, Y_pred)
 
-    # Threshold-free metrics (skip labels that are constant in Y_true)
     keep = _filter_labels_with_both_classes(Y_true)
     if keep.any():
         out["auroc_micro"] = roc_auc_score(Y_true[:, keep], P[:, keep], average="micro")
@@ -72,22 +84,41 @@ def multilabel_eval(Y_true, logits, threshold=0.5, label_names=None, return_repo
 
     return out, P, Y_pred
 
-def rhythm_conditions_eval(Y_true, logits, rhythm_idx, cond_idx, threshold=0.5,
-                           rhythm_label_names=None, cond_label_names=None):
+
+def rhythm_conditions_eval(
+    Y_true,
+    scores,
+    rhythm_idx,
+    cond_idx,
+    threshold=0.5,
+    rhythm_label_names=None,
+    cond_label_names=None,
+    inputs_are_probs=False,
+):
     Y_true = _to_numpy(Y_true).astype(int)
-    logits = _to_numpy(logits).astype(np.float32)
-    P = sigmoid_np(logits)
+    scores = _to_numpy(scores).astype(np.float32)
 
-    # ---- overall (all labels)
-    overall, _, _ = multilabel_eval(Y_true, logits, threshold=threshold)
+    # NOTE: probs vs logits
+    if inputs_are_probs:
+        P = np.clip(scores, 0.0, 1.0).astype(np.float32)
+    else:
+        P = sigmoid_np(scores)
 
-    # ---- conditions (multilabel)
-    cond_metrics, _, _ = multilabel_eval(
-        Y_true[:, cond_idx], logits[:, cond_idx],
-        threshold=threshold, label_names=cond_label_names
+    # overall (all labels)
+    overall, _, _ = multilabel_eval(
+        Y_true, scores, threshold=threshold,
+        inputs_are_probs=inputs_are_probs
     )
 
-    # ---- rhythm (try multiclass if one-hot)
+    # conditions (multilabel)
+    cond_metrics, _, _ = multilabel_eval(
+        Y_true[:, cond_idx], scores[:, cond_idx],
+        threshold=threshold,
+        label_names=cond_label_names,
+        inputs_are_probs=inputs_are_probs
+    )
+
+    # rhythm (try multiclass if one-hot)
     Y_r = Y_true[:, rhythm_idx]
     P_r = P[:, rhythm_idx]
 
@@ -95,7 +126,6 @@ def rhythm_conditions_eval(Y_true, logits, rhythm_idx, cond_idx, threshold=0.5,
     if one_hot:
         y_true_r = Y_r.argmax(axis=1)
         y_pred_r = P_r.argmax(axis=1)
-
         rhythm = {
             "acc": float((y_true_r == y_pred_r).mean()),
             "f1_macro": f1_score(y_true_r, y_pred_r, average="macro", zero_division=0),
@@ -106,10 +136,11 @@ def rhythm_conditions_eval(Y_true, logits, rhythm_idx, cond_idx, threshold=0.5,
             "used_argmax_multiclass": True,
         }
     else:
-        # fall back to multilabel rhythm evaluation
         rhythm_metrics, _, _ = multilabel_eval(
-            Y_r, logits[:, rhythm_idx],
-            threshold=threshold, label_names=rhythm_label_names
+            Y_r, scores[:, rhythm_idx],
+            threshold=threshold,
+            label_names=rhythm_label_names,
+            inputs_are_probs=inputs_are_probs
         )
         rhythm = dict(rhythm_metrics)
         rhythm["used_argmax_multiclass"] = False
@@ -121,23 +152,34 @@ def rhythm_conditions_eval(Y_true, logits, rhythm_idx, cond_idx, threshold=0.5,
     }
 
 
-def score_overall_and_rc(y_true_bin, logits, mlb, split_name="val", threshold=0.5):
-    # build rhythm/condition indices once per call (mlb is already fit)
+def score_overall_and_rc(
+    y_true_bin,
+    scores,
+    mlb,
+    split_name="val",
+    threshold=0.5,
+    inputs_are_probs=False,
+):
     rhythm_snomed = list(RHYTHM_INFO_BY_SNOMED.keys())
     label_to_idx = {c: i for i, c in enumerate(mlb.classes_)}
     rhythm_idx = [label_to_idx[c] for c in rhythm_snomed if c in label_to_idx]
     cond_idx = [i for i in range(len(mlb.classes_)) if i not in rhythm_idx]
 
-    overall, _, _ = multilabel_eval(y_true_bin, logits, threshold=threshold)
+    overall, _, _ = multilabel_eval(
+        y_true_bin, scores, threshold=threshold,
+        inputs_are_probs=inputs_are_probs
+    )
     rc = rhythm_conditions_eval(
-        y_true_bin, logits,
+        y_true_bin, scores,
         rhythm_idx=rhythm_idx, cond_idx=cond_idx,
         threshold=threshold,
         rhythm_label_names=[mlb.classes_[i] for i in rhythm_idx],
         cond_label_names=[mlb.classes_[i] for i in cond_idx],
+        inputs_are_probs=inputs_are_probs
     )
 
     print(f"[{split_name}] overall:", overall)
     print(f"[{split_name}] conditions:", rc["conditions_multilabel"])
     print(f"[{split_name}] rhythm:", rc["rhythm"])
     return overall, rc
+
